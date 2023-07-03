@@ -1,8 +1,9 @@
 import os
-import openai
+
 from PIL import Image
 from streamlit_chat import message
 from utils import *
+import openai
 
 openai.api_key = st.secrets["openai_api_key"]
 # For Langchain
