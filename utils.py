@@ -14,7 +14,7 @@ from langchain.chains import RetrievalQA
 OPENAI_API_KEY = st.secrets["openai_api_key"]
 llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY,
-    model_name='gpt-3.5-turbo-16k',
+    model_name='gpt-4',
     temperature=0.0
 )
 
