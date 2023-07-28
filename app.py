@@ -1,5 +1,12 @@
-import os
 
+#CARD.AI APP
+
+# ==== Section 0: LLM Setup ======
+
+
+#Imports
+
+import os
 from PIL import Image
 from streamlit_chat import message
 from utils import *
@@ -25,17 +32,26 @@ from langchain import OpenAI, LLMChain, PromptTemplate
 from langchain.utilities import GoogleSearchAPIWrapper
 from langchain.chains import ConversationChain
 
-pubmedq = PubmedQueryRun()
-st.header("CARD.AI")
-# Tools setup
+
+#OPENAI setup -- needs secrets file
+openai.api_key = OPENAI_API_KEY
+# For Langchain
+os.environ["OPENAI_API_KEY"] = openai.api_key
+
+# LLM setup
 llm = OpenAI(temperature=0.5, openai_api_key=OPENAI_API_KEY, streaming=True)
+
+#For calculator function (just for testing)
 llm_math_chain = LLMMathChain.from_llm(llm)
+
+#Connect to vector database -  needs access to utils.py & have the index already setup with papers
 qa = VectorDBQAWithSourcesChain.from_chain_type(
      llm=llm,
      chain_type="stuff",
      vectorstore=vectorstore
  )
 
+#Initializing df for drug-genome interaction search
 df = pd.read_csv("drug_genome_dgidb.csv", encoding= 'unicode_escape')
 pd_agent = create_pandas_dataframe_agent(
     ChatOpenAI(openai_api_key=OPENAI_API_KEY, streaming=True),
@@ -44,7 +60,12 @@ pd_agent = create_pandas_dataframe_agent(
     agent_type=AgentType.OPENAI_FUNCTIONS,
 )
 
-chat_history = ""
+
+#For Pubmed Search API Access
+pubmedq = PubmedQueryRun()
+
+
+#Tool list - edit to give new capabilities to choose from. See Langchain docs on tools
 tools = [
     Tool(
         name="Calculator",
@@ -68,6 +89,10 @@ tools = [
     ),
 
 ]
+
+
+#Prompt setup - changing this could be helpful
+chat_history = ""
 prefix = """Have a conversation with a human, answering the following questions as best you can. You have access to the following tools:"""
 suffix = """Begin!"
 
@@ -75,6 +100,8 @@ suffix = """Begin!"
 Question: {input}
 {agent_scratchpad}"""
 
+
+#Initializes Agent with our prompt and tools
 prompt = ZeroShotAgent.create_prompt(
     tools=tools,
     prefix=prefix,
@@ -83,71 +110,38 @@ prompt = ZeroShotAgent.create_prompt(
 )
 
 
-
-# class DirtyState:
-#     NOT_DIRTY = "NOT_DIRTY"
-#     DIRTY = "DIRTY"
-#     UNHANDLED_SUBMIT = "UNHANDLED_SUBMIT"
-
-
-# def get_dirty_state() -> str:
-#     return st.session_state.get("dirty_state", DirtyState.NOT_DIRTY)
-
-
-# def set_dirty_state(state: str) -> None:
-#     st.session_state["dirty_state"] = state
-
-
-# def with_clear_container(submit_clicked: bool) -> bool:
-#     if get_dirty_state() == DirtyState.DIRTY:
-#         if submit_clicked:
-#             set_dirty_state(DirtyState.UNHANDLED_SUBMIT)
-#             st.experimental_rerun()
-#         else:
-#             set_dirty_state(DirtyState.NOT_DIRTY)
-
-#     if submit_clicked or get_dirty_state() == DirtyState.UNHANDLED_SUBMIT:
-#         set_dirty_state(DirtyState.DIRTY)
-#         return True
-
-#     return False
-
-openai.api_key = OPENAI_API_KEY
-# For Langchain
-os.environ["OPENAI_API_KEY"] = openai.api_key
-
-
 # ==== Section 1: Streamlit Settings ======
+
+st.header("CARD.AI")
+
 with st.sidebar:
-    st.markdown("# Welcome to our LLM Chatbot 🙌")
+    st.markdown("# Welcome to CARD.AI! 🧠🧬")
     st.markdown(
-        "This demo allows you to search a curated database of Alzheimer's related literature in the style of **chatGPT** \n"
+        "This demo allows you to search a curated database of Alzheimer's related literature in the style of **chatGPT**,\n "
         )
     st.markdown(
-        "Unlike chatGPT, our chatbot can't make stuff up\n"
-        "since it uses our curated database. \n"
+        "Our Chatbot levels up ChatGPT \n"
+        "by using our curated database and granting it access to specialized tools. \n"
     )
-    st.markdown("👩‍🏫 Original Developer: Wen Yang; adapted and modified by Chelsea Alvarado")
+    st.markdown("👩‍🏫 Original Developer: Wen Yang; adapted and modified by Chelsea Alvarado & Gracelyn Hill")
     st.markdown("---")
     st.markdown("# Under The Hood 🎩 🐇")
     st.markdown("How to Prevent Large Language Model (LLM) hallucination?")
     st.markdown("- **Pinecone**: vector database for Outside knowledge")
-    st.markdown("- **Langchain**: to remember the context of the conversation")
+    st.markdown("- **Langchain**: to access tools and use chain-of-thought prompting")
 
-# Homepage title
-st.title("Demo")
-# Hero Image
 # add CARD logo
 card_img = Image.open('img/CARD-logo-white-print.png')
 dti_img = Image.open('img/dti_img.jpeg')
 
+
+
 st.sidebar.image(card_img)
 st.sidebar.image(dti_img)
 
+
+
 # ========== Section 3: Our Chatbot ============================
-
-
-
 
 
 
@@ -157,7 +151,12 @@ agent = ZeroShotAgent(llm_chain=llm_chain, tools=tools, verbose=True)
 agent_chain = AgentExecutor.from_agent_and_tools(
     agent=agent, tools=tools, verbose=True
 )
+
+
 # ========== Section 4. Display in chatbot style ===========
+
+
+#Initializing session state variables
 if 'generated' not in st.session_state:
     st.session_state['generated'] = []
 
@@ -180,50 +179,24 @@ def get_text():
 
 
 user_input = get_text()
-tools = [
-    Tool(
-        name="Calculator",
-        func=llm_math_chain.run,
-        description="useful for when you need to answer questions about math",
-    ),
-    Tool(
-        name="Pubmed Vector QA",
-        func=qa,
-        description="useful for when you need to answer questions about research in neurodegenerative diseases. State your sources in the final answer",
-    ),
-    Tool(
-        name="Pubmed search",
-        func=pubmedq,
-        description="useful for when you need to answer questions about pubmed papers. Input should be in the form of a question containing full context",
-    ),
-    Tool(
-        name="pandas agent",
-        func=pd_agent.run,
-        description="""write a python script using pandas to access OmicSynth Data about the druggability of genes for AD, ALS, FTLD, LBD. PD and PSP. You have access to the following columns:
-gene_name	gene_claim_name	entrez_id	interaction_claim_source	interaction_types	drug_claim_name	drug_claim_primary_name	drug_name	drug_concept_id	interaction_group_score	PMIDs	ensembl_gene_id	druggability_tier	hgnc_names	chr_b37	start_b37	end_b37	strand	description	no_of_gwas_regions	small_mol_druggable	bio_druggable	adme_gene
- These columns include snRNA-seq expression profiles for genes, Genes expressed in different cell types for diseases, drug interactions for genes.
-""",
-    ),
-]
+
 output_container = st.empty()
 
 output_container = output_container.container()
 
 if user_input:
     # source contain urls from Outside
+    #chat history uses streamlit session state to send mesages to llm prompt
     chat_history = [val for pair in zip(st.session_state['generated'], st.session_state['past']) for val in pair]
     answer_container = output_container.chat_message("assistant", avatar="🧠")
     st_callback = StreamlitCallbackHandler(answer_container, expand_new_thoughts=False)
 
     output =  agent_chain.run({'input': user_input, 'chat_history':chat_history}, callbacks=[st_callback])
-    #answer_container.write(output)
     # store the output
     st.session_state.past.append(user_input)
     st.session_state.generated.append(output)
-
-    # Display source urls
     
-
+#Adding text to session state with chat bubbles
 if st.session_state['generated']:
     for i in range(len(st.session_state['generated'])-1, -1, -1):
         message(st.session_state["generated"][i],  key=str(i))
@@ -232,19 +205,4 @@ if st.session_state['generated']:
         message(st.session_state['past'][i], is_user=True,
                 avatar_style="big-ears",  key=str(i) + '_user')
 
-
-# with st.form(key="form"):
-#     user_input = st.text_input("Or, ask your neuro questions!")
-#     submit_clicked = st.form_submit_button("Go!")
-
-# output_container = st.empty()
-# output_container = output_container.container()
-# output_container.chat_message("user").write(user_input)
-
-# answer_container = output_container.chat_message("assistant", avatar="🧠")
-# st_callback = StreamlitCallbackHandler(answer_container)
-
-# answer = mrkl.run(user_input, callbacks=[st_callback])
-
-# answer_container.write(answer)
 
