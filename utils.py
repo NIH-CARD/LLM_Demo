@@ -15,7 +15,7 @@ OPENAI_API_KEY = st.secrets["openai_api_key"]
 llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY,
     model_name='gpt-4',
-    temperature=0.0
+    temperature=0.5
 )
 
 # ------OpenAI: Embed model-------------

@@ -38,9 +38,6 @@ openai.api_key = OPENAI_API_KEY
 # For Langchain
 os.environ["OPENAI_API_KEY"] = openai.api_key
 
-# LLM setup
-llm = OpenAI(temperature=0.5, openai_api_key=OPENAI_API_KEY, streaming=True)
-
 #For calculator function (just for testing)
 llm_math_chain = LLMMathChain.from_llm(llm)
 
